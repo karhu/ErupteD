@@ -7,11 +7,10 @@
  */
 module erupted.vulkan_lib_loader;
 
+import core.stdc.stdio : printf;
 import erupted.functions;
-import core.stdc.stdio : fprintf, stderr, FILE;
 
 nothrow @nogc:
-
 
 /// private helper functions for windows platform
 version( Windows ) {
@@ -21,8 +20,8 @@ private:
     auto loadLib()  { return LoadLibrary( "vulkan-1.dll" ); }
     auto freeLib()  { return FreeLibrary( vulkan_lib ) != 0; }
     auto loadSym()  { return cast( PFN_vkGetInstanceProcAddr )GetProcAddress( vulkan_lib, "vkGetInstanceProcAddr" ); }
-    void logLibError( FILE* log_stream, const( char )* message ) {
-        fprintf( log_stream, "%svulkan-1.dll! Error code: 0x%x\n", message, GetLastError());
+    void logLibError(const( char )* message ) {
+        printf("%svulkan-1.dll! Error code: 0x%x\n", message, GetLastError());
     }
 }
 
@@ -35,8 +34,8 @@ private:
     auto loadLib()  { return dlopen( "libvulkan.so", RTLD_NOW | RTLD_LOCAL ); }
     auto freeLib()  { return dlclose( vulkan_lib ) == 0; }
     auto loadSym()  { return cast( PFN_vkGetInstanceProcAddr )dlsym( vulkan_lib, "vkGetInstanceProcAddr" ); }
-    void logLibError( FILE* log_stream, const( char )* message ) {
-        fprintf( log_stream, "%slibvulkan.so.1! Error: %s\n", message, dlerror );
+    void logLibError(const( char )* message ) {
+        printf("%slibvulkan.so.1! Error: %s\n", message, dlerror );
     }
 }
 
@@ -49,8 +48,8 @@ private:
     auto loadLib()  { return dlopen( "libvulkan.so.1", RTLD_LAZY | RTLD_LOCAL ); }
     auto freeLib()  { return dlclose( vulkan_lib ) == 0; }
     auto loadSym()  { return cast( PFN_vkGetInstanceProcAddr )dlsym( vulkan_lib, "vkGetInstanceProcAddr" ); }
-    void logLibError( FILE* log_stream, const( char )* message ) {
-        fprintf( log_stream, "%slibvulkan.so.1! Error: %s\n", message, dlerror );
+    void logLibError(const( char )* message ) {
+        printf("%slibvulkan.so.1! Error: %s\n", message, dlerror );
     }
 }
 
@@ -61,10 +60,10 @@ private:
 /// Params:
 ///     log_stream = file stream to receive error messages, default stderr
 /// Returns: true if the vulkan lib could be loaded, false otherwise
-bool loadVulkanLib( FILE* log_stream = stderr ) {
+bool loadVulkanLib() {
     vulkan_lib = loadLib;
     if( !vulkan_lib ) {
-        logLibError( log_stream, "Could not load " );
+        logLibError("Could not load " );
         return false;
     } else {
         return true;
@@ -78,14 +77,14 @@ bool loadVulkanLib( FILE* log_stream = stderr ) {
 /// Params:
 ///     log_stream = file stream to receive error messages, default stderr
 /// Returns: vkGetInstanceProcAddr if it could be loaded from the lib, null otherwise
-PFN_vkGetInstanceProcAddr loadGetInstanceProcAddr( FILE* log_stream = stderr ) {
-    if( !vulkan_lib && !loadVulkanLib( log_stream )) {
-        fprintf( log_stream, "Cannot not retrieve vkGetInstanceProcAddr as vulkan lib is not loaded!" );
+PFN_vkGetInstanceProcAddr loadGetInstanceProcAddr() {
+    if( !vulkan_lib && !loadVulkanLib()) {
+        printf("Cannot not retrieve vkGetInstanceProcAddr as vulkan lib is not loaded!" );
         return null;
     }
     auto getInstanceProcAddr = loadSym;
     if( !getInstanceProcAddr )
-        logLibError( log_stream, "Could not retrieve vkGetInstanceProcAddr from " );
+        logLibError("Could not retrieve vkGetInstanceProcAddr from " );
     return getInstanceProcAddr;
 }
 
@@ -95,12 +94,12 @@ PFN_vkGetInstanceProcAddr loadGetInstanceProcAddr( FILE* log_stream = stderr ) {
 /// Params:
 ///     log_stream = file stream to receive error messages, default stderr
 /// Returns: true if the vulkan lib could be freed, false otherwise
-bool freeVulkanLib( FILE* log_stream = stderr ) {
+bool freeVulkanLib() {
     if( !vulkan_lib ) {
-        fprintf( log_stream, "Cannot free vulkan lib as it is not loaded!" );
+        printf("Cannot free vulkan lib as it is not loaded!" );
         return false;
     } else if( freeLib ) {
-        logLibError( log_stream, "Could not unload " );
+        logLibError("Could not unload " );
         return false;
     } else {
         return true;
@@ -123,8 +122,8 @@ bool freeVulkanLib( FILE* log_stream = stderr ) {
 /// all errors during vulkan lib loading and vkGetInstanceProcAddr retrieving are reported to log_stream, default stderr
 ///     log_stream = file stream to receive error messages, default stderr
 /// Returns: true if the vulkan lib could be freed, false otherwise
-bool loadGlobalLevelFunctions( FILE* log_stream = stderr ) {
-    auto getInstanceProcAddr = loadGetInstanceProcAddr( log_stream );
+bool loadGlobalLevelFunctions() {
+    auto getInstanceProcAddr = loadGetInstanceProcAddr();
     if( !getInstanceProcAddr ) return false;
     erupted.functions.loadGlobalLevelFunctions( getInstanceProcAddr );
     return true;
